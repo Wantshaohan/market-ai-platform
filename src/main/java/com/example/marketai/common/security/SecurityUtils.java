@@ -1,0 +1,26 @@
+package com.example.marketai.common.security;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+/**
+ * 安全上下文工具类。
+ */
+public final class SecurityUtils {
+
+    private SecurityUtils() {
+    }
+
+    public static UserPrincipal getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal principal) {
+            return principal;
+        }
+        return null;
+    }
+
+    public static Long getCurrentUserId() {
+        UserPrincipal principal = getCurrentUser();
+        return principal == null ? null : principal.getUserId();
+    }
+}

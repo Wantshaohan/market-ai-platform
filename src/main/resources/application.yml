@@ -1,0 +1,67 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: market-ai-platform
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/market_ai?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: ""
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      password: ""
+      timeout: 3s
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    default-property-inclusion: non_null
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+logging:
+  level:
+    com.example.marketai: debug
+
+# ===== 业务自定义配置 =====
+market-ai:
+  jwt:
+    # 生产环境务必替换为足够强度的随机密钥（HS256 至少 32 字节）
+    secret: "market-ai-platform-jwt-secret-key-please-change-me-in-production-2024"
+    # token 有效期（毫秒），默认 24 小时
+    expiration: 86400000
+  sms:
+    # 短信通道：mock（开发环境，验证码打印到控制台）| aliyun
+    provider: mock
+    # 验证码有效期（秒）
+    code-ttl: 300
+    aliyun:
+      access-key-id: ""
+      access-key-secret: ""
+      sign-name: ""
+      template-code: ""
+  ai:
+    # AI 提供商：mock（开发环境）| openai
+    provider: mock
+    openai:
+      api-key: ""
+      base-url: "https://api.openai.com/v1"
+      model: "gpt-4o"
