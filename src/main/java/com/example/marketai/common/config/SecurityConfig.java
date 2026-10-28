@@ -55,6 +55,15 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 认证与公开行情无需登录
                         .requestMatchers("/api/auth/**", "/api/market/**").permitAll()
+                        // 行情看板 v1 接口（公开）
+                        .requestMatchers(
+                                "/api/v1/markets/**",
+                                "/api/v1/quotes/**",
+                                "/api/v1/market-data/**",
+                                "/api/v1/watchlists/**").permitAll()
+                        // 静态资源与页面入口
+                        .requestMatchers("/", "/index.html", "/favicon.ico",
+                                "/assets/**", "/css/**", "/js/**", "/fonts/**").permitAll()
                         // 管理后台仅管理员可访问
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())

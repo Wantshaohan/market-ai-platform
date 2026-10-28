@@ -4,6 +4,15 @@ server:
 spring:
   application:
     name: market-ai-platform
+  web:
+    resources:
+      # 行情页前端独立放在 frontend/ 目录，运行时按工作目录解析并作为静态资源对外提供
+      static-locations:
+        - file:${user.dir}/frontend/
+        - classpath:/META-INF/resources/
+        - classpath:/resources/
+        - classpath:/static/
+        - classpath:/public/
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/market_ai?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
