@@ -68,9 +68,30 @@ market-ai:
       sign-name: ""
       template-code: ""
   ai:
-    # AI 提供商：mock（开发环境）| openai
-    provider: mock
+    # AI 提供商：mock（开发环境）| openai | deepseek
+    provider: deepseek
     openai:
       api-key: ""
       base-url: "https://api.openai.com/v1"
       model: "gpt-4o"
+    deepseek:
+      # DeepSeek（Anthropic 兼容端点）。api-key 由用户自行填写
+      api-key: ""
+      base-url: "https://api.deepseek.com/anthropic"
+      model: "deepseek-chat"
+      max-tokens: 1024
+  market:
+    forex:
+      enabled: true
+      base-url: "https://api-free.itick.org"
+      token: "48a636f36c924ea0a976d2e0290efde54bf0cb8fef2f45e1820b258895d702c5"
+      k-type: 2            # 5分钟
+      limit: 10
+      fetch-interval-ms: 70000
+      cache-ttl-seconds: 300
+      instruments:
+        - { region: GB, code: EURUSD, name: "欧元/美元", category: forex }
+        - { region: GB, code: GBPUSD, name: "英镑/美元", category: forex }
+        - { region: GB, code: USDJPY, name: "美元/日元", category: forex }
+        - { region: GB, code: AUDUSD, name: "澳元/美元", category: forex }
+        - { region: GB, code: USDCNH, name: "美元/离岸人民币", category: forex }

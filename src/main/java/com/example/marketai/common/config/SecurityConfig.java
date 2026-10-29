@@ -60,7 +60,10 @@ public class SecurityConfig {
                                 "/api/v1/markets/**",
                                 "/api/v1/quotes/**",
                                 "/api/v1/market-data/**",
-                                "/api/v1/watchlists/**").permitAll()
+                                "/api/v1/watchlists/**",
+                                "/api/v1/forex/**").permitAll()
+                        // AI 分析（暂公开，便于无登录一键分析；生产环境再收紧为需登录 + 额度）
+                        .requestMatchers("/api/ai/**").permitAll()
                         // 静态资源与页面入口
                         .requestMatchers("/", "/index.html", "/favicon.ico",
                                 "/assets/**", "/css/**", "/js/**", "/fonts/**").permitAll()

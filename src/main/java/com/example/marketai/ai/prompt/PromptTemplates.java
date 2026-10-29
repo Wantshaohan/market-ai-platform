@@ -16,4 +16,9 @@ public final class PromptTemplates {
         String q = (question == null || question.isBlank()) ? "请对该标的进行综合分析。" : question;
         return String.format("标的：%s%n最新行情：%s%n用户问题：%s", symbol, quoteDesc, q);
     }
+
+    public static String buildAnalysisPromptFromSummary(String symbol, String marketSummary, String question) {
+        String q = (question == null || question.isBlank()) ? "请基于当前盘面对该标的进行综合分析。" : question;
+        return String.format("标的：%s%n当前盘面：%s%n用户问题：%s", symbol, marketSummary, q);
+    }
 }

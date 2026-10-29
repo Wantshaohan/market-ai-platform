@@ -129,6 +129,28 @@
   .index-card .chg { font-size: 13px; font-weight: 600; }
   .index-card .chg span { margin-right: 8px; }
 
+  /* 外汇卡片 */
+  .forex-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px; padding: 14px 18px;
+  }
+  .forex-card {
+    border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2);
+    padding: 12px 14px; cursor: pointer; transition: border-color .15s;
+  }
+  .forex-card:hover { border-color: var(--text-2); }
+  .forex-card.active { border-color: var(--accent); }
+  .forex-card .fx-top { display: flex; align-items: baseline; justify-content: space-between; }
+  .forex-card .fx-nm { font-size: 13px; color: var(--text-2); }
+  .forex-card .fx-sym { font-size: 11px; color: var(--muted); }
+  .forex-card .fx-px { font-size: 20px; font-weight: 650; margin: 4px 0 2px; letter-spacing: -0.02em; }
+  .forex-card .fx-chg { font-size: 12px; font-weight: 600; }
+  .forex-card .fx-meta { color: var(--muted); font-size: 11px; margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .forex-card svg { display: block; margin-top: 6px; }
+
+  /* AI 分析结果 */
+  .ai-body { padding: 14px 18px 16px; white-space: pre-wrap; line-height: 1.7; font-size: 14px; color: var(--text-2); }
+
   /* 商品横条 */
   .ticker { padding: 10px 0; overflow: hidden; position: relative; }
   .ticker-track { display: flex; gap: 12px; width: max-content; animation: ticker 40s linear infinite; }
@@ -247,6 +269,7 @@
   <nav class="tabs" id="tabs">
     <button class="tab active" data-target="overview">指数</button>
     <button class="tab" data-target="ticker">商品</button>
+    <button class="tab" data-target="forex">外汇</button>
     <button class="tab" data-target="watchlist">自选</button>
     <button class="tab" data-target="discover">发现</button>
   </nav>
@@ -275,6 +298,14 @@
     <div class="ticker"><div class="ticker-track" id="ticker-track"></div></div>
   </section>
 
+  <section class="panel" id="forex">
+    <div class="panel-head">
+      <h2 class="panel-title">外汇行情</h2>
+      <span class="panel-sub">主流货币对 · 点击卡片查看与 AI 分析</span>
+    </div>
+    <div class="forex-grid" id="forex-grid"></div>
+  </section>
+
   <section class="panel" id="main-panel">
     <div class="main-head" id="main-head"></div>
     <div class="main-toolbar">
@@ -288,10 +319,19 @@
         <button data-period="1mo">月K</button>
       </div>
       <div class="spacer"></div>
+      <button class="btn primary" id="ai-analyze">AI 分析</button>
       <div class="seg" id="range"></div>
     </div>
     <div id="chart"></div>
     <div class="main-foot" id="main-foot"></div>
+  </section>
+
+  <section class="panel" id="ai-panel" style="display:none;">
+    <div class="panel-head">
+      <h2 class="panel-title">AI 分析</h2>
+      <span class="panel-sub" id="ai-panel-sub"></span>
+    </div>
+    <div class="ai-body" id="ai-body"></div>
   </section>
 
   <div class="two-col">
@@ -341,6 +381,8 @@
     quote: s => '/api/v1/quotes/' + encodeURIComponent(s),
     candles: s => '/api/v1/market-data/' + encodeURIComponent(s) + '/candles',
     watchlist: '/api/v1/watchlists/default/items',
+    forex: '/api/v1/forex/quotes',
+    ai: '/api/ai/analyze',
   };
 
   const RANGES = [
@@ -352,7 +394,7 @@
     chartType: 'kline',   // intraday | kline
     period: '1d',         // 1d | 1w | 1mo
     range: '1M',
-    indices: [], commodities: [], watchlist: [],
+    indices: [], commodities: [], watchlist: [], forex: [],
   };
 
   const chart = echarts.init(document.getElementById('chart'), null, { renderer: 'canvas' });
@@ -419,6 +461,45 @@
   async function loadWatchlist() {
     state.watchlist = await fetchJson(API.watchlist);
     renderWatchlist();
+  }
+  async function loadForex() {
+    state.forex = await fetchJson(API.forex);
+    renderForex(state.forex);
+  }
+
+  function sparklineSvg(values, color) {
+    if (!values || values.length < 2) return '';
+    const w = 120, h = 28, pad = 2;
+    const min = Math.min(...values), max = Math.max(...values);
+    const span = (max - min) || 1;
+    const pts = values.map((v, i) => {
+      const x = pad + (w - 2 * pad) * i / (values.length - 1);
+      const y = h - pad - (h - 2 * pad) * (Number(v) - min) / span;
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    }).join(' ');
+    return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '"><polyline points="' + pts + '" fill="none" stroke="' + color + '" stroke-width="1.5"/></svg>';
+  }
+
+  function renderForex(list) {
+    const grid = $('#forex-grid');
+    if (!list || !list.length) {
+      grid.innerHTML = '<div class="hint">外汇数据加载中…</div>';
+      return;
+    }
+    const P = palette();
+    grid.innerHTML = list.map(f => {
+      const d = dir(f.change);
+      const color = Number(f.change) >= 0 ? P.up : P.down;
+      const active = f.symbol === state.symbol ? ' active' : '';
+      return '<div class="forex-card' + active + '" data-symbol="' + f.symbol + '">' +
+        '<div class="fx-top"><span class="fx-nm">' + f.name + '</span><span class="fx-sym">' + f.symbol + '</span></div>' +
+        '<div class="fx-px num">' + num(f.price, 5) + '</div>' +
+        '<div class="fx-chg ' + d + '">' + arrow(f.change) + ' ' + signed(f.change, 4) + ' (' + pct(f.changePercent) + ')</div>' +
+        sparklineSvg(f.sparkline, color) +
+        '<div class="fx-meta"><span>高 ' + num(f.high, 5) + '</span><span>低 ' + num(f.low, 5) + '</span><span>' + new Date(f.updatedAt).toLocaleTimeString('zh-CN', { hour12: false }) + '</span></div>' +
+      '</div>';
+    }).join('');
+    $$('#forex-grid .forex-card').forEach(el => el.addEventListener('click', () => selectSymbol(el.dataset.symbol)));
   }
 
   function chgHtml(change, changePercent, extra = '') {
@@ -489,11 +570,36 @@
     updateSelectedCount();
   }
 
+  // ---------- AI 分析 ----------
+  async function analyzeAi() {
+    const btn = $('#ai-analyze');
+    btn.disabled = true; btn.textContent = '分析中…';
+    try {
+      const res = await fetchJson(API.ai, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ symbol: state.symbol }) });
+      showAiResult(state.symbol, res.analysis);
+    } catch (err) {
+      showError('AI 分析失败：' + err.message);
+    } finally {
+      btn.disabled = false; btn.textContent = 'AI 分析';
+    }
+  }
+  function showAiResult(symbol, analysis) {
+    const panel = $('#ai-panel');
+    panel.style.display = 'block';
+    $('#ai-panel-sub').textContent = symbol + ' · ' + new Date().toLocaleTimeString('zh-CN', { hour12: false });
+    $('#ai-body').textContent = analysis || '（无分析结果）';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
   // ---------- 主图 ----------
   async function selectSymbol(symbol) {
+    // 外汇标的走独立展示路径（行情看板接口不覆盖外汇）
+    const fx = (state.forex || []).find(f => f.symbol === symbol);
+    if (fx) { selectForex(fx); return; }
+
     state.symbol = symbol;
     // 高亮选中卡片/商品/行
-    $$('.index-card, .commodity, #wl-body tr[data-symbol]').forEach(el => {
+    $$('.index-card, .commodity, #wl-body tr[data-symbol], .forex-card').forEach(el => {
       el.classList.toggle('active', el.dataset.symbol === symbol);
     });
     try {
@@ -504,6 +610,50 @@
     } catch (err) {
       showError('加载行情失败：' + err.message);
     }
+  }
+
+  function selectForex(fx) {
+    state.symbol = fx.symbol;
+    $$('.index-card, .commodity, #wl-body tr[data-symbol], .forex-card').forEach(el => {
+      el.classList.toggle('active', el.dataset.symbol === fx.symbol);
+    });
+    renderForexHeader(fx);
+    renderForexSparklineChart(fx);
+    $('#main-foot').innerHTML =
+      '<span>数据源 <b>itick 外汇</b></span>' +
+      '<span>更新时间 <b>' + new Date(fx.updatedAt).toLocaleString('zh-CN') + '</b></span>';
+  }
+
+  function renderForexHeader(fx) {
+    const d = dir(fx.change);
+    $('#main-head').innerHTML =
+      '<div>' +
+        '<div class="sym">' + fx.name + ' · ' + fx.symbol + ' <span class="tag">外汇</span></div>' +
+        '<div class="px num">' + num(fx.price, 5) + '</div>' +
+        '<div class="chg ' + d + '">' + arrow(fx.change) + ' ' + signed(fx.change, 4) + '  <span>' + pct(fx.changePercent) + '</span></div>' +
+      '</div>' +
+      '<div class="meta" style="margin-left:auto;">' +
+        '<span>今开 <b>' + num(fx.open, 5) + '</b></span>' +
+        '<span>最高 <b class="up">' + num(fx.high, 5) + '</b></span>' +
+        '<span>最低 <b class="down">' + num(fx.low, 5) + '</b></span>' +
+      '</div>';
+  }
+
+  function renderForexSparklineChart(fx) {
+    const P = palette();
+    const closes = (fx.sparkline || []).map(Number);
+    const labels = closes.map((_, i) => i + 1);
+    chart.setOption({
+      animation: false,
+      grid: { left: 60, right: 16, top: 16, bottom: 46 },
+      tooltip: {
+        trigger: 'axis', backgroundColor: P.text, borderWidth: 0, textStyle: { color: cssVar('--surface') },
+        formatter: p => '第 ' + (p[0].dataIndex + 1) + ' 根 · 收盘 <b>' + num(closes[p[0].dataIndex], 5) + '</b>',
+      },
+      xAxis: { type: 'category', data: labels, boundaryGap: true, axisLine: { lineStyle: { color: P.grid } }, axisTick: { show: false }, axisLabel: { color: P.muted, fontSize: 11 } },
+      yAxis: { scale: true, splitNumber: 4, axisLabel: { color: P.muted, fontSize: 11 }, splitLine: { lineStyle: { color: P.grid } } },
+      series: [{ type: 'line', data: closes, symbol: 'none', smooth: false, lineStyle: { color: P.accent, width: 2 } }],
+    }, true);
   }
 
   function renderHeader(q) {
@@ -776,12 +926,14 @@
       const cur = document.documentElement.getAttribute('data-theme');
       applyTheme(cur === 'dark' ? 'light' : 'dark');
     });
+    // AI 分析
+    $('#ai-analyze').addEventListener('click', analyzeAi);
     // 导航 tabs
     $$('#tabs .tab').forEach(t => t.addEventListener('click', () => {
       $$('#tabs .tab').forEach(x => x.classList.remove('active'));
       t.classList.add('active');
       const target = t.dataset.target;
-      const map = { overview: '#overview', ticker: '#ticker', watchlist: '#watchlist', discover: '#discover' };
+      const map = { overview: '#overview', ticker: '#ticker', forex: '#forex', watchlist: '#watchlist', discover: '#discover' };
       const el = $(map[target] || '#main-panel');
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }));
@@ -801,8 +953,9 @@
   async function init() {
     bindEvents();
     tickClock(); setInterval(tickClock, 30000);
+    setInterval(loadForex, 70000);
     try {
-      await Promise.all([loadOverview(), loadCommodities(), loadWatchlist()]);
+      await Promise.all([loadOverview(), loadCommodities(), loadForex(), loadWatchlist()]);
       renderDiscover();
       const quote = await fetchJson(API.quote(state.symbol));
       state.lastQuote = quote;
