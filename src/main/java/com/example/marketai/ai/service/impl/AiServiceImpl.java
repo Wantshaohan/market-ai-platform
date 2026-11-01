@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -38,6 +39,14 @@ public class AiServiceImpl implements AiService {
                 .symbol(symbol)
                 .analysis(analysis)
                 .build();
+    }
+
+    @Override
+    public void analyzeStream(AiAnalysisRequest request, Consumer<String> onToken) {
+        String symbol = request.getSymbol();
+        String marketSummary = buildMarketSummary(symbol);
+        String userPrompt = PromptTemplates.buildAnalysisPromptFromSummary(symbol, marketSummary, request.getQuestion());
+        aiProvider.chatStream(PromptTemplates.MARKET_ANALYSIS_SYSTEM, userPrompt, onToken);
     }
 
     private String buildMarketSummary(String symbol) {
